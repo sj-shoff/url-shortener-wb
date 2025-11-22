@@ -12,28 +12,25 @@ import (
 	"url-shortener-wb/internal/domain"
 )
 
-type URLUsecase struct {
-	urlRepo       URLRepository
-	analyticsRepo AnalyticsRepository
-	cache         Cache
-	logger        *zlog.Zerolog
+type urlUsecase struct {
+	urlRepo URLRepository
+	cache   Cache
+	logger  *zlog.Zerolog
 }
 
 func NewURLUsecase(
 	urlRepo URLRepository,
-	analyticsRepo AnalyticsRepository,
 	cache Cache,
 	logger *zlog.Zerolog,
-) *URLUsecase {
-	return &URLUsecase{
-		urlRepo:       urlRepo,
-		analyticsRepo: analyticsRepo,
-		cache:         cache,
-		logger:        logger,
+) *urlUsecase {
+	return &urlUsecase{
+		urlRepo: urlRepo,
+		cache:   cache,
+		logger:  logger,
 	}
 }
 
-func (u *URLUsecase) CreateShortURL(ctx context.Context, originalURL, customAlias string) (string, error) {
+func (u *urlUsecase) CreateShortURL(ctx context.Context, originalURL, customAlias string) (string, error) {
 	alias := customAlias
 	if alias == "" {
 		b := make([]byte, 8)
@@ -69,7 +66,7 @@ func (u *URLUsecase) CreateShortURL(ctx context.Context, originalURL, customAlia
 	return alias, nil
 }
 
-func (u *URLUsecase) GetOriginalURL(ctx context.Context, alias string) (string, error) {
+func (u *urlUsecase) GetOriginalURL(ctx context.Context, alias string) (string, error) {
 	originalURL, err := u.cache.Get(ctx, alias)
 	if err == nil {
 		u.logger.Debug().Str("alias", alias).Msg("cache hit")
@@ -86,24 +83,4 @@ func (u *URLUsecase) GetOriginalURL(ctx context.Context, alias string) (string, 
 	}
 
 	return url.OriginalURL, nil
-}
-
-func (u *URLUsecase) RecordClick(ctx context.Context, alias, userAgent, ip string) error {
-	url, err := u.urlRepo.GetByAlias(ctx, alias)
-	if err != nil {
-		return err
-	}
-
-	click := &domain.Click{
-		URLID:     url.ID,
-		UserAgent: userAgent,
-		IPAddress: ip,
-		ClickedAt: time.Now(),
-	}
-
-	return u.analyticsRepo.RecordClick(ctx, click)
-}
-
-func (u *URLUsecase) GetAnalytics(ctx context.Context, alias string) (*domain.AnalyticsReport, error) {
-	return u.analyticsRepo.GetAnalytics(ctx, alias)
 }

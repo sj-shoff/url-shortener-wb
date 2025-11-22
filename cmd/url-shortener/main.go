@@ -9,13 +9,14 @@ import (
 )
 
 func main() {
+	zlog.Init()
 
 	cfg, err := config.MustLoad()
 	if err != nil {
 		zlog.Logger.Fatal().Err(err).Msg("Failed to load config")
 	}
 
-	application, err := app.NewApp(cfg)
+	application, err := app.NewApp(cfg, &zlog.Logger)
 	if err != nil {
 		zlog.Logger.Fatal().Err(err).Msg("Failed to create application")
 	}

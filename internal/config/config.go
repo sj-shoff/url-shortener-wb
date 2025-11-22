@@ -1,4 +1,3 @@
-// internal/config/config.go
 package config
 
 import (
@@ -30,10 +29,11 @@ type Config struct {
 		DB   int    `env:"REDIS_DB"`
 	}
 	Server struct {
-		Addr         string        `env:"SERVER_PORT" validate:"required"`
-		ReadTimeout  time.Duration `env:"SERVER_READ_TIMEOUT" validate:"required"`
-		WriteTimeout time.Duration `env:"SERVER_WRITE_TIMEOUT" validate:"required"`
-		IdleTimeout  time.Duration `env:"SERVER_IDLE_TIMEOUT" validate:"required"`
+		Addr            string        `env:"SERVER_ADDR" validate:"required"`
+		ReadTimeout     time.Duration `env:"SERVER_READ_TIMEOUT" validate:"required"`
+		WriteTimeout    time.Duration `env:"SERVER_WRITE_TIMEOUT" validate:"required"`
+		IdleTimeout     time.Duration `env:"SERVER_IDLE_TIMEOUT" validate:"required"`
+		ShutdownTimeout time.Duration `env:"SERVER_SHUTDOWN_TIMEOUT" validate:"required"`
 	}
 	Retries struct {
 		Attempts int     `env:"RETRIES_ATTEMPTS" validate:"required"`

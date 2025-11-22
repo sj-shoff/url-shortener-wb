@@ -3,7 +3,6 @@ package postgres
 import (
 	"context"
 	"database/sql"
-	"time"
 
 	"github.com/wb-go/wbf/dbpg"
 	"github.com/wb-go/wbf/retry"
@@ -15,18 +14,15 @@ import (
 type URLRepository struct {
 	db      *dbpg.DB
 	retries retry.Strategy
-	ttl     time.Duration
 }
 
 func NewURLRepository(
 	db *dbpg.DB,
 	retries retry.Strategy,
-	ttl time.Duration,
 ) *URLRepository {
 	return &URLRepository{
 		db:      db,
 		retries: retries,
-		ttl:     ttl,
 	}
 }
 
@@ -58,13 +54,20 @@ func (r *URLRepository) GetByAlias(ctx context.Context, alias string) (*domain.U
 	return &url, nil
 }
 
-// func (r *URLRepository) ExistsByAlias(ctx context.Context, alias string) (bool, error) {
-// 	var exists bool
-// 	err := r.db.QueryRowWithRetry(ctx, r.retries,
-// 		`SELECT EXISTS(SELECT 1 FROM urls WHERE alias = $1)`, alias).
-// 		Scan(&exists)
-// 	if err != nil {
-// 		return false, err
-// 	}
-// 	return exists, nil
-// }
+func (r *URLRepository) ExistsByAlias(ctx context.Context, alias string) (bool, error) {
+	var exists bool
+	retryErr := retry.Do(func() error {
+		row := r.db.QueryRowContext(ctx,
+			`SELECT EXISTS(SELECT 1 FROM urls WHERE alias = $1)`, alias)
+
+		if scanErr := row.Scan(&exists); scanErr != nil {
+			return scanErr
+		}
+		return nil
+	}, r.retries)
+
+	if retryErr != nil {
+		return false, retryErr
+	}
+	return exists, nil
+}

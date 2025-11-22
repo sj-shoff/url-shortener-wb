@@ -71,13 +71,16 @@ func (r *AnalyticsRepository) GetAnalytics(ctx context.Context, alias string) (*
 	report := &domain.AnalyticsReport{
 		TotalClicks:    len(clicks),
 		DailyStats:     make(map[string]int),
+		MonthlyStats:   make(map[string]int),
 		UserAgentStats: make(map[string]int),
 		Clicks:         clicks,
 	}
 
 	for _, click := range clicks {
 		date := click.ClickedAt.Format("2006-01-02")
+		month := click.ClickedAt.Format("2006-01")
 		report.DailyStats[date]++
+		report.MonthlyStats[month]++
 		report.UserAgentStats[click.UserAgent]++
 	}
 

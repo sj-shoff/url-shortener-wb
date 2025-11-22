@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/wb-go/wbf/zlog"
@@ -14,26 +13,21 @@ import (
 )
 
 type URLHandler struct {
-	urlUsecase URLUsecase
-	logger     *zlog.Zerolog
+	usecase     URLUsecase
+	analyticsUC AnalyticsUsecase
+	logger      *zlog.Zerolog
 }
 
 func NewURLHandler(
-	urlUsecase URLUsecase,
+	usecase URLUsecase,
+	analyticsUC AnalyticsUsecase,
 	logger *zlog.Zerolog,
 ) *URLHandler {
 	return &URLHandler{
-		urlUsecase: urlUsecase,
-		logger:     logger,
+		usecase:     usecase,
+		analyticsUC: analyticsUC,
+		logger:      logger,
 	}
-}
-
-func (h *URLHandler) RegisterRoutes() http.Handler {
-	r := chi.NewRouter()
-	r.Post("/shorten", h.CreateShortURL)
-	r.Get("/s/{alias}", h.RedirectToOriginal)
-	r.Get("/analytics/{alias}", h.GetAnalytics)
-	return r
 }
 
 func (h *URLHandler) CreateShortURL(w http.ResponseWriter, r *http.Request) {
@@ -43,7 +37,7 @@ func (h *URLHandler) CreateShortURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	alias, err := h.urlUsecase.CreateShortURL(r.Context(), req.URL, req.Custom)
+	alias, err := h.usecase.CreateShortURL(r.Context(), req.URL, req.Custom)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		h.logger.Error().Err(err).Msg("create short url failed")
@@ -73,19 +67,19 @@ func (h *URLHandler) RedirectToOriginal(w http.ResponseWriter, r *http.Request) 
 		ip = ip[:colon]
 	}
 
-	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
-	defer cancel()
-
-	if err := h.urlUsecase.RecordClick(ctx, alias, userAgent, ip); err != nil {
-		h.logger.Warn().Err(err).Str("alias", alias).Msg("failed to record click")
-	}
-
-	originalURL, err := h.urlUsecase.GetOriginalURL(r.Context(), alias)
+	originalURL, err := h.usecase.GetOriginalURL(r.Context(), alias)
 	if err != nil {
 		http.Error(w, "url not found", http.StatusNotFound)
 		h.logger.Error().Err(err).Str("alias", alias).Msg("url not found")
 		return
 	}
+
+	go func() {
+		ctx := context.Background()
+		if err := h.analyticsUC.RecordClick(ctx, alias, userAgent, ip); err != nil {
+			h.logger.Warn().Err(err).Str("alias", alias).Msg("failed to record click")
+		}
+	}()
 
 	http.Redirect(w, r, originalURL, http.StatusTemporaryRedirect)
 }

@@ -13,6 +13,7 @@ type CreateShortURLResponse struct {
 type AnalyticsResponse struct {
 	TotalClicks    int              `json:"total_clicks"`
 	DailyStats     map[string]int   `json:"daily_stats"`
+	MonthlyStats   map[string]int   `json:"monthly_stats"`
 	UserAgentStats map[string]int   `json:"user_agent_stats"`
 	Clicks         []ClickAnalytics `json:"clicks"`
 }

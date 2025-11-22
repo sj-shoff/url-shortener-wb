@@ -13,6 +13,7 @@ type Click struct {
 type AnalyticsReport struct {
 	TotalClicks    int
 	DailyStats     map[string]int
+	MonthlyStats   map[string]int
 	UserAgentStats map[string]int
 	Clicks         []Click
 }

@@ -2,44 +2,42 @@ package redis
 
 import (
 	"context"
+	"url-shortener-wb/internal/config"
 
-	"github.com/wb-go/wbf/redis"
+	wbfredis "github.com/wb-go/wbf/redis"
 	"github.com/wb-go/wbf/retry"
 )
 
-type URLCache struct {
-	client  *redis.Client
+type RedisCache struct {
+	client  *wbfredis.Client
 	retries retry.Strategy
 }
 
-func NewURLCache(
-	client *redis.Client,
-	retries retry.Strategy,
-) *URLCache {
-	return &URLCache{
+func NewRedisCache(cfg *config.Config, retries retry.Strategy) *RedisCache {
+	client := wbfredis.New(cfg.RedisAddr(), cfg.Redis.Pass, cfg.Redis.DB)
+	return &RedisCache{
 		client:  client,
 		retries: retries,
 	}
 }
 
-func (c *URLCache) Get(ctx context.Context, key string) (string, error) {
+func (c *RedisCache) Get(ctx context.Context, key string) (string, error) {
 	return c.client.GetWithRetry(ctx, c.retries, key)
 }
 
-func (c *URLCache) Set(ctx context.Context, key, value string) error {
+func (c *RedisCache) Set(ctx context.Context, key, value string) error {
 	return c.client.SetWithRetry(ctx, c.retries, key, value)
 }
 
-// func (c *URLCache) Exists(ctx context.Context, key string) (bool, error) {
-// 	var exists bool
-// 	err := retry.DoContext(ctx, c.retries, func(ctx context.Context) error {
-// 		count, err := c.client.Exists(ctx, key)
-// 		if err != nil {
-// 			return err
-// 		}
-// 		exists = count.(int64) > 0
-// 		return nil
-// 	})
-
-// 	return exists, err
-// }
+func (c *RedisCache) Exists(ctx context.Context, key string) (bool, error) {
+	var count int64
+	err := retry.DoContext(ctx, c.retries, func() error {
+		var err error
+		count, err = c.client.Exists(ctx, key).Result()
+		return err
+	})
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}

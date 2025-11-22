@@ -7,16 +7,32 @@ import (
 	"url-shortener-wb/internal/http-server/handler/dto"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/wb-go/wbf/zlog"
 )
 
-func (h *URLHandler) GetAnalytics(w http.ResponseWriter, r *http.Request) {
+type AnalyticsHandler struct {
+	usecase AnalyticsUsecase
+	logger  *zlog.Zerolog
+}
+
+func NewAnalyticsHandler(
+	usecase AnalyticsUsecase,
+	logger *zlog.Zerolog,
+) *AnalyticsHandler {
+	return &AnalyticsHandler{
+		usecase: usecase,
+		logger:  logger,
+	}
+}
+
+func (h *AnalyticsHandler) GetAnalytics(w http.ResponseWriter, r *http.Request) {
 	alias := chi.URLParam(r, "alias")
 	if alias == "" {
 		http.Error(w, "invalid url", http.StatusBadRequest)
 		return
 	}
 
-	report, err := h.urlUsecase.GetAnalytics(r.Context(), alias)
+	report, err := h.usecase.GetAnalytics(r.Context(), alias)
 	if err != nil {
 		http.Error(w, "failed to get analytics", http.StatusInternalServerError)
 		h.logger.Error().Err(err).Str("alias", alias).Msg("get analytics failed")
@@ -26,6 +42,7 @@ func (h *URLHandler) GetAnalytics(w http.ResponseWriter, r *http.Request) {
 	resp := dto.AnalyticsResponse{
 		TotalClicks:    report.TotalClicks,
 		DailyStats:     report.DailyStats,
+		MonthlyStats:   report.MonthlyStats,
 		UserAgentStats: report.UserAgentStats,
 		Clicks:         make([]dto.ClickAnalytics, len(report.Clicks)),
 	}
