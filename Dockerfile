@@ -7,7 +7,7 @@ RUN go mod download
 
 COPY . .
 
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main ./cmd
+RUN CGO_ENABLED=0 GOOS=linux go build -o main ./cmd/url-shortener
 
 FROM alpine:latest
 
@@ -16,6 +16,10 @@ RUN apk --no-cache add ca-certificates
 WORKDIR /root/
 
 COPY --from=builder /app/main .
+COPY --from=builder /app/static ./static
+COPY --from=builder /app/.env ./.env
+COPY --from=builder /app/migrations ./migrations
+
 
 EXPOSE ${SERVER_PORT}
 

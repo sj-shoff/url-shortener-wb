@@ -62,7 +62,7 @@ func NewApp(cfg *config.Config, logger *zlog.Zerolog) (*App, error) {
 	muxWM := middleware.LoggingMiddleware(mux)
 
 	server := &http.Server{
-		Addr:         cfg.Server.Addr,
+		Addr:         ":" + cfg.Server.Addr,
 		Handler:      muxWM,
 		ReadTimeout:  cfg.Server.ReadTimeout,
 		WriteTimeout: cfg.Server.WriteTimeout,

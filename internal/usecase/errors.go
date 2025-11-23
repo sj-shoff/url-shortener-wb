@@ -7,6 +7,4 @@ var (
 	ErrAliasExists  = errors.New("alias already exists")
 	ErrInvalidURL   = errors.New("invalid url format")
 	ErrInvalidAlias = errors.New("invalid alias format")
-	ErrCacheFailure = errors.New("cache operation failed")
-	ErrAnalytics    = errors.New("analytics error")
 )
