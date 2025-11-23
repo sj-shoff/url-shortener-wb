@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Аналитика - URL Shortener</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/charts.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1 class="logo">🔗 ShortURL</h1>
+            <nav>
+                <a href="/">Создать ссылку</a>
+                <a href="/analytics" class="active">Аналитика</a>
+            </nav>
+        </header>
+
+        <main class="main-content">
+            <div class="card">
+                <h2>Аналитика по коротким ссылкам</h2>
+                <div class="form-group">
+                    <label for="aliasInput">Введите alias</label>
+                    <div class="input-group">
+                        <input type="text" id="aliasInput" placeholder="abc123">
+                        <button id="loadAnalyticsBtn" class="btn-primary">Загрузить</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="analyticsContainer" class="hidden">
+                <div class="card">
+                    <h2>Общая статистика</h2>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <h3>Всего переходов</h3>
+                            <p id="totalClicks" class="stat-value">0</p>
+                        </div>
+                        <div class="stat-item">
+                            <h3>Сегодня</h3>
+                            <p id="todayClicks" class="stat-value">0</p>
+                        </div>
+                        <div class="stat-item">
+                            <h3>Этот месяц</h3>
+                            <p id="monthClicks" class="stat-value">0</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2>График переходов</h2>
+                    <canvas id="clicksChart" width="400" height="200"></canvas>
+                </div>
+
+                <div class="card">
+                    <h2>Статистика по устройствам</h2>
+                    <canvas id="userAgentsChart" width="400" height="200"></canvas>
+                </div>
+
+                <div class="card">
+                    <h2>Последние переходы</h2>
+                    <table class="clicks-table">
+                        <thead>
+                            <tr>
+                                <th>Дата и время</th>
+                                <th>User Agent</th>
+                                <th>IP адрес</th>
+                            </tr>
+                        </thead>
+                        <tbody id="clicksTableBody">
+                            <!-- Данные будут добавлены через JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="errorContainer" class="error hidden"></div>
+        </main>
+
+        <footer class="footer">
+            <p>© 2025 URL Shortener Service. Все права защищены.</p>
+        </footer>
+    </div>
+
+    <script src="/static/js/charts.js"></script>
+</body>
+</html>

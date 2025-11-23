@@ -2,7 +2,11 @@ package redis
 
 import (
 	"context"
+	"fmt"
+
 	"url-shortener-wb/internal/config"
+
+	repo "url-shortener-wb/internal/repository"
 
 	wbfredis "github.com/wb-go/wbf/redis"
 	"github.com/wb-go/wbf/retry"
@@ -22,11 +26,22 @@ func NewRedisCache(cfg *config.Config, retries retry.Strategy) *RedisCache {
 }
 
 func (c *RedisCache) Get(ctx context.Context, key string) (string, error) {
-	return c.client.GetWithRetry(ctx, c.retries, key)
+	value, err := c.client.GetWithRetry(ctx, c.retries, key)
+	if err != nil {
+		if err.Error() == "redis: nil" {
+			return "", fmt.Errorf("%w: key %s not found", repo.ErrCacheMiss, key)
+		}
+		return "", fmt.Errorf("failed to get from cache: %w", err)
+	}
+	return value, nil
 }
 
 func (c *RedisCache) Set(ctx context.Context, key, value string) error {
-	return c.client.SetWithRetry(ctx, c.retries, key, value)
+	err := c.client.SetWithRetry(ctx, c.retries, key, value)
+	if err != nil {
+		return fmt.Errorf("failed to set cache: %w", err)
+	}
+	return nil
 }
 
 func (c *RedisCache) Exists(ctx context.Context, key string) (bool, error) {
@@ -34,10 +49,14 @@ func (c *RedisCache) Exists(ctx context.Context, key string) (bool, error) {
 	err := retry.DoContext(ctx, c.retries, func() error {
 		var err error
 		count, err = c.client.Exists(ctx, key).Result()
-		return err
+		if err != nil {
+			return fmt.Errorf("redis exists failed: %w", err)
+		}
+		return nil
 	})
+
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("failed to check cache existence: %w", err)
 	}
 	return count > 0, nil
 }

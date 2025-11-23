@@ -30,7 +30,6 @@ type App struct {
 }
 
 func NewApp(cfg *config.Config, logger *zlog.Zerolog) (*App, error) {
-
 	retries := cfg.DefaultRetryStrategy()
 
 	dbOpts := &dbpg.Options{

@@ -29,7 +29,7 @@ type Config struct {
 		DB   int    `env:"REDIS_DB"`
 	}
 	Server struct {
-		Addr            string        `env:"SERVER_ADDR" validate:"required"`
+		Addr            string        `env:"SERVER_PORT" validate:"required"`
 		ReadTimeout     time.Duration `env:"SERVER_READ_TIMEOUT" validate:"required"`
 		WriteTimeout    time.Duration `env:"SERVER_WRITE_TIMEOUT" validate:"required"`
 		IdleTimeout     time.Duration `env:"SERVER_IDLE_TIMEOUT" validate:"required"`
@@ -40,7 +40,6 @@ type Config struct {
 		DelayMs  int     `env:"RETRIES_DELAY_MS" validate:"required"`
 		Backoff  float64 `env:"RETRIES_BACKOFF" validate:"required"`
 	}
-	CacheTTLHours int `env:"CACHE_TTL_HOURS" validate:"required,gte=1"`
 }
 
 func MustLoad() (*Config, error) {

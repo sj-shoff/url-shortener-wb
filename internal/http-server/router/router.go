@@ -3,8 +3,11 @@ package router
 import (
 	"net/http"
 	"path/filepath"
+	"strings"
 
 	"url-shortener-wb/internal/http-server/handler"
+
+	"github.com/go-chi/chi/v5"
 )
 
 type Handler struct {
@@ -12,23 +15,32 @@ type Handler struct {
 	AnalyticsH *handler.AnalyticsHandler
 }
 
-func SetupRouter(h *Handler) *http.ServeMux {
-	mux := http.NewServeMux()
+func SetupRouter(h *Handler) http.Handler {
+	r := chi.NewRouter()
 
-	mux.HandleFunc("POST /shorten", h.UrlH.CreateShortURL)
-	mux.HandleFunc("GET /s/{alias}", h.UrlH.RedirectToOriginal)
-	mux.HandleFunc("GET /analytics/{alias}", h.AnalyticsH.GetAnalytics)
+	r.Post("/shorten", h.UrlH.CreateShortURL)
+	r.Get("/s/{alias}", h.UrlH.RedirectToOriginal)
+	r.Get("/analytics/{alias}", h.AnalyticsH.GetAnalytics)
 
 	staticDir := "./static"
-	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir(staticDir))))
+	fs := http.FileServer(http.Dir(staticDir))
+	r.Handle("/static/*", http.StripPrefix("/static/", fs))
 
-	mux.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/" {
-			http.NotFound(w, r)
-			return
-		}
+	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, filepath.Join(staticDir, "index.html"))
 	})
 
-	return mux
+	r.Get("/*", func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasPrefix(r.URL.Path, "/api/") ||
+			strings.HasPrefix(r.URL.Path, "/s/") ||
+			strings.HasPrefix(r.URL.Path, "/analytics/") ||
+			strings.HasPrefix(r.URL.Path, "/static/") {
+			http.NotFound(w, r)
+			return
+		}
+
+		http.ServeFile(w, r, filepath.Join(staticDir, "index.html"))
+	})
+
+	return r
 }

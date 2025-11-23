@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>URL Shortener</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1 class="logo">🔗 ShortURL</h1>
+            <nav>
+                <a href="/" class="active">Создать ссылку</a>
+                <a href="/analytics">Аналитика</a>
+            </nav>
+        </header>
+
+        <main class="main-content">
+            <div class="card">
+                <h2>Создать короткую ссылку</h2>
+                <div class="form-group">
+                    <label for="originalUrl">Оригинальный URL</label>
+                    <input type="url" id="originalUrl" placeholder="https://example.com/very/long/url" required>
+                </div>
+                <div class="form-group">
+                    <label for="customAlias">Кастомный alias (опционально)</label>
+                    <input type="text" id="customAlias" placeholder="my-link" maxlength="20">
+                    <small class="hint">Только буквы, цифры, минимум 3 символа</small>
+                </div>
+                <button id="shortenBtn" class="btn-primary">Создать короткую ссылку</button>
+            </div>
+
+            <div id="resultCard" class="card hidden">
+                <h2>Ваша короткая ссылка</h2>
+                <div class="result-group">
+                    <input type="text" id="shortUrl" readonly>
+                    <button id="copyBtn" class="btn-copy">📋 Копировать</button>
+                </div>
+                <div class="analytics-link">
+                    <a id="analyticsLink" href="#" target="_blank">📊 Посмотреть аналитику</a>
+                </div>
+            </div>
+
+            <div id="errorContainer" class="error hidden"></div>
+        </main>
+
+        <footer class="footer">
+            <p>© 2025 URL Shortener Service. Все права защищены.</p>
+        </footer>
+    </div>
+
+    <script src="/static/js/main.js"></script>
+</body>
+</html>

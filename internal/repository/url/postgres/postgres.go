@@ -3,12 +3,14 @@ package postgres
 import (
 	"context"
 	"database/sql"
-
-	"github.com/wb-go/wbf/dbpg"
-	"github.com/wb-go/wbf/retry"
+	"errors"
+	"fmt"
 
 	"url-shortener-wb/internal/domain"
 	repo "url-shortener-wb/internal/repository"
+
+	"github.com/wb-go/wbf/dbpg"
+	"github.com/wb-go/wbf/retry"
 )
 
 type URLRepository struct {
@@ -32,7 +34,13 @@ func (r *URLRepository) Create(ctx context.Context, url *domain.URL) error {
 		VALUES ($1, $2, $3) RETURNING id`,
 		url.OriginalURL, url.Alias, url.CreatedAt,
 	)
-	return err
+	if err != nil {
+		if err.Error() == "pq: duplicate key value violates unique constraint \"urls_alias_key\"" {
+			return fmt.Errorf("%w: alias %s already exists", repo.ErrAlreadyExists, url.Alias)
+		}
+		return fmt.Errorf("failed to insert url: %w", err)
+	}
+	return nil
 }
 
 func (r *URLRepository) GetByAlias(ctx context.Context, alias string) (*domain.URL, error) {
@@ -40,15 +48,18 @@ func (r *URLRepository) GetByAlias(ctx context.Context, alias string) (*domain.U
 		`SELECT id, original_url, alias, created_at
 		FROM urls WHERE alias = $1 LIMIT 1`, alias)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, repo.ErrNotFound
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("%w: alias %s not found", repo.ErrNotFound, alias)
 		}
-		return nil, err
+		return nil, fmt.Errorf("failed to query url by alias: %w", err)
 	}
 
 	var url domain.URL
 	if err := row.Scan(&url.ID, &url.OriginalURL, &url.Alias, &url.CreatedAt); err != nil {
-		return nil, err
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("%w: alias %s not found", repo.ErrNotFound, alias)
+		}
+		return nil, fmt.Errorf("failed to scan url row: %w", err)
 	}
 
 	return &url, nil
@@ -56,18 +67,18 @@ func (r *URLRepository) GetByAlias(ctx context.Context, alias string) (*domain.U
 
 func (r *URLRepository) ExistsByAlias(ctx context.Context, alias string) (bool, error) {
 	var exists bool
-	retryErr := retry.Do(func() error {
+	err := retry.DoContext(ctx, r.retries, func() error {
 		row := r.db.QueryRowContext(ctx,
 			`SELECT EXISTS(SELECT 1 FROM urls WHERE alias = $1)`, alias)
 
-		if scanErr := row.Scan(&exists); scanErr != nil {
-			return scanErr
+		if err := row.Scan(&exists); err != nil {
+			return fmt.Errorf("failed to scan exists query: %w", err)
 		}
 		return nil
-	}, r.retries)
+	})
 
-	if retryErr != nil {
-		return false, retryErr
+	if err != nil {
+		return false, fmt.Errorf("failed to check alias existence: %w", err)
 	}
 	return exists, nil
 }
