@@ -30,6 +30,10 @@ func SetupRouter(h *Handler) http.Handler {
 		http.ServeFile(w, r, filepath.Join(staticDir, "index.html"))
 	})
 
+	r.Get("/analytics", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, filepath.Join(staticDir, "analytics.html"))
+	})
+
 	r.Get("/*", func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(r.URL.Path, "/api/") ||
 			strings.HasPrefix(r.URL.Path, "/s/") ||

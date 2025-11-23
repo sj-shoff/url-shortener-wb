@@ -5,8 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Аналитика - URL Shortener</title>
     <link rel="stylesheet" href="/static/css/style.css">
-    <link rel="stylesheet" href="/static/css/charts.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -51,16 +49,6 @@
                 </div>
 
                 <div class="card">
-                    <h2>График переходов</h2>
-                    <canvas id="clicksChart" width="400" height="200"></canvas>
-                </div>
-
-                <div class="card">
-                    <h2>Статистика по устройствам</h2>
-                    <canvas id="userAgentsChart" width="400" height="200"></canvas>
-                </div>
-
-                <div class="card">
                     <h2>Последние переходы</h2>
                     <table class="clicks-table">
                         <thead>
@@ -85,6 +73,133 @@
         </footer>
     </div>
 
-    <script src="/static/js/charts.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const loadAnalyticsBtn = document.getElementById('loadAnalyticsBtn');
+            const aliasInput = document.getElementById('aliasInput');
+            const analyticsContainer = document.getElementById('analyticsContainer');
+            const errorContainer = document.getElementById('errorContainer');
+
+            loadAnalyticsBtn.addEventListener('click', async function() {
+                const alias = aliasInput.value.trim();
+                
+                if (!alias) {
+                    showError('Пожалуйста, введите alias');
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`/analytics/${alias}`);
+                    
+                    if (!response.ok) {
+                        const responseText = await response.text();
+                        let errorMessage = `Ошибка: ${response.status}`;
+                        
+                        // Пытаемся распарсить JSON ошибки
+                        try {
+                            const errorData = JSON.parse(responseText);
+                            errorMessage = errorData.error || errorMessage;
+                        } catch (e) {
+                            // Если не JSON, используем текст ответа
+                            if (responseText) {
+                                errorMessage = responseText;
+                            }
+                        }
+                        
+                        if (response.status === 404) {
+                            errorMessage = 'URL не найден';
+                        } else if (response.status === 500) {
+                            errorMessage = 'Внутренняя ошибка сервера';
+                        }
+                        
+                        throw new Error(errorMessage);
+                    }
+
+                    const data = await response.json();
+                    renderAnalytics(data);
+                    analyticsContainer.classList.remove('hidden');
+                    errorContainer.classList.add('hidden');
+                    
+                } catch (error) {
+                    showError(error.message);
+                    analyticsContainer.classList.add('hidden');
+                }
+            });
+
+            function renderAnalytics(data) {
+                // Общая статистика
+                document.getElementById('totalClicks').textContent = data.total_clicks || 0;
+                
+                // Сегодняшние клики (последние 24 часа)
+                const today = new Date().toISOString().split('T')[0];
+                const todayClicks = data.daily_stats ? (data.daily_stats[today] || 0) : 0;
+                document.getElementById('todayClicks').textContent = todayClicks;
+                
+                // Месячные клики
+                const currentMonth = new Date().toISOString().slice(0, 7);
+                const monthClicks = data.monthly_stats ? (data.monthly_stats[currentMonth] || 0) : 0;
+                document.getElementById('monthClicks').textContent = monthClicks;
+                
+                // Последние переходы
+                renderClicksTable(data.clicks || []);
+            }
+
+            function renderClicksTable(clicks) {
+                const tbody = document.getElementById('clicksTableBody');
+                tbody.innerHTML = '';
+                
+                if (clicks.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; padding: 20px;">Нет данных о переходах</td></tr>';
+                    return;
+                }
+                
+                clicks.slice(0, 10).forEach(click => {
+                    const row = document.createElement('tr');
+                    
+                    // Форматируем дату для отображения
+                    const date = new Date(click.clicked_at);
+                    const formattedDate = date.toLocaleString('ru-RU', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+                    
+                    // Упрощаем User-Agent
+                    let userAgent = click.user_agent || 'Неизвестно';
+                    if (userAgent.includes('Chrome')) userAgent = 'Chrome';
+                    else if (userAgent.includes('Firefox')) userAgent = 'Firefox';
+                    else if (userAgent.includes('Safari')) userAgent = 'Safari';
+                    else if (userAgent.includes('Mobile')) userAgent = 'Mobile';
+                    
+                    row.innerHTML = `
+                        <td>${formattedDate}</td>
+                        <td>${userAgent}</td>
+                        <td>${click.ip_address || 'Скрыт'}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            }
+
+            function showError(message) {
+                errorContainer.textContent = message;
+                errorContainer.classList.remove('hidden');
+                setTimeout(() => {
+                    errorContainer.classList.add('hidden');
+                }, 5000);
+            }
+
+            // Загрузка аналитики при открытии страницы с параметром alias
+            const urlParams = new URLSearchParams(window.location.search);
+            const aliasParam = urlParams.get('alias');
+            if (aliasParam) {
+                aliasInput.value = aliasParam;
+                setTimeout(() => {
+                    loadAnalyticsBtn.click();
+                }, 500);
+            }
+        });
+    </script>
 </body>
 </html>

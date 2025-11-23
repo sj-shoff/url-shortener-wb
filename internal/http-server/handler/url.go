@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"url-shortener-wb/internal/http-server/handler/dto"
+	"url-shortener-wb/internal/usecase"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/wb-go/wbf/zlog"
@@ -36,27 +37,29 @@ func NewURLHandler(
 func (h *URLHandler) CreateShortURL(w http.ResponseWriter, r *http.Request) {
 	var req dto.CreateShortURLRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, fmt.Sprintf("invalid request body: %v", err), http.StatusBadRequest)
+		h.sendJSONError(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
 
 	if _, err := url.ParseRequestURI(req.URL); err != nil {
-		http.Error(w, "invalid url format", http.StatusBadRequest)
+		h.sendJSONError(w, "invalid url format", http.StatusBadRequest)
 		return
 	}
 
 	alias, err := h.usecase.CreateShortURL(r.Context(), req.URL, req.Custom)
 	if err != nil {
-		if errors.Is(err, ErrInvalidURL) || errors.Is(err, ErrInvalidAlias) {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+		if errors.Is(err, usecase.ErrInvalidURL) || errors.Is(err, usecase.ErrInvalidAlias) {
+			h.sendJSONError(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		if errors.Is(err, ErrAliasExists) {
-			http.Error(w, err.Error(), http.StatusConflict)
+
+		if errors.Is(err, usecase.ErrAliasExists) {
+			h.sendJSONError(w, "alias already exists", http.StatusConflict)
 			return
 		}
+
 		h.logger.Error().Err(err).Msg("create short url failed")
-		http.Error(w, "internal server error", http.StatusInternalServerError)
+		h.sendJSONError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -81,7 +84,7 @@ func (h *URLHandler) CreateShortURL(w http.ResponseWriter, r *http.Request) {
 func (h *URLHandler) RedirectToOriginal(w http.ResponseWriter, r *http.Request) {
 	alias := chi.URLParam(r, "alias")
 	if alias == "" {
-		http.Error(w, "invalid url", http.StatusBadRequest)
+		h.sendJSONError(w, "invalid url", http.StatusBadRequest)
 		return
 	}
 
@@ -93,12 +96,12 @@ func (h *URLHandler) RedirectToOriginal(w http.ResponseWriter, r *http.Request) 
 
 	originalURL, err := h.usecase.GetOriginalURL(r.Context(), alias)
 	if err != nil {
-		if errors.Is(err, ErrNotFound) || errors.Is(err, ErrInvalidAlias) {
-			http.Error(w, "url not found", http.StatusNotFound)
+		if errors.Is(err, usecase.ErrNotFound) || errors.Is(err, usecase.ErrInvalidAlias) {
+			h.sendJSONError(w, "url not found", http.StatusNotFound)
 			return
 		}
 		h.logger.Error().Err(err).Str("alias", alias).Msg("get original url failed")
-		http.Error(w, "internal server error", http.StatusInternalServerError)
+		h.sendJSONError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -110,4 +113,11 @@ func (h *URLHandler) RedirectToOriginal(w http.ResponseWriter, r *http.Request) 
 	}()
 
 	http.Redirect(w, r, originalURL, http.StatusTemporaryRedirect)
+}
+
+func (h *URLHandler) sendJSONError(w http.ResponseWriter, message string, statusCode int) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
+	errorResponse := map[string]string{"error": message}
+	json.NewEncoder(w).Encode(errorResponse)
 }

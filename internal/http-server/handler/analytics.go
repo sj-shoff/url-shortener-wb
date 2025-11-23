@@ -31,18 +31,18 @@ func NewAnalyticsHandler(
 func (h *AnalyticsHandler) GetAnalytics(w http.ResponseWriter, r *http.Request) {
 	alias := chi.URLParam(r, "alias")
 	if alias == "" {
-		http.Error(w, "alias is required", http.StatusBadRequest)
+		h.sendJSONError(w, "alias is required", http.StatusBadRequest)
 		return
 	}
 
 	report, err := h.usecase.GetAnalytics(r.Context(), alias)
 	if err != nil {
 		if errors.Is(err, usecase.ErrNotFound) || errors.Is(err, usecase.ErrInvalidAlias) {
-			http.Error(w, "url not found", http.StatusNotFound)
+			h.sendJSONError(w, "url not found", http.StatusNotFound)
 			return
 		}
 		h.logger.Error().Err(err).Str("alias", alias).Msg("get analytics failed")
-		http.Error(w, "internal server error", http.StatusInternalServerError)
+		h.sendJSONError(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 
@@ -66,4 +66,11 @@ func (h *AnalyticsHandler) GetAnalytics(w http.ResponseWriter, r *http.Request) 
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
 		h.logger.Error().Err(err).Msg("failed to encode analytics response")
 	}
+}
+
+func (h *AnalyticsHandler) sendJSONError(w http.ResponseWriter, message string, statusCode int) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
+	errorResponse := map[string]string{"error": message}
+	json.NewEncoder(w).Encode(errorResponse)
 }
